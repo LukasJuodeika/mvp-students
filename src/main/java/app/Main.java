@@ -1,25 +1,22 @@
 package app;
 
 import entities.Student;
-import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import network.Network;
+import org.pdfsam.rxjavafx.schedulers.JavaFxScheduler;
 
 public class Main extends Application {
 
@@ -72,6 +69,7 @@ public class Main extends Application {
 
         stage.setScene(scene);
         stage.show();
+        loadAllStudents();
     }
 
     private void updateEditableData(Student student) {
@@ -84,8 +82,9 @@ public class Main extends Application {
         textFieldSurname.clear();
     }
 
-    private Student createStudentFromEditableData() {
+    private Student createStudentFromEditableData(Long oldId) {
         return new Student(
+                oldId,
                 textFieldName.getText(),
                 textFieldSurname.getText()
         );
@@ -97,38 +96,76 @@ public class Main extends Application {
     }
 
     private void hideProgress() {
-        if(previousScreen != null) {
+        if (previousScreen != null) {
             scene.setRoot(previousScreen);
         }
+    }
+
+    private void showError(Throwable throwable) {
+        new Alert(Alert.AlertType.ERROR, throwable.getMessage()).show();
+    }
+
+    private void loadAllStudents() {
+        network.getAllStudents()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .doOnSubscribe(it -> showProgress())
+                .doFinally(this::hideProgress)
+                .subscribe(students -> {
+                    studentsObservableList.addAll(students);
+                    clearEditableData();
+                }, throwable -> {
+                    showError(throwable);
+                });
     }
 
     private void setupButtons(HBox hBox) {
         Button addButton = new Button("Add");
         addButton.setOnAction((ActionEvent e) -> {
-            showProgress();
-            Completable.fromAction(() -> Thread.sleep(1000))
+            network.createStudent(textFieldName.getText(), textFieldSurname.getText())
                     .subscribeOn(Schedulers.io())
-                    .subscribe(()-> hideProgress());
-            studentsObservableList.add(createStudentFromEditableData());
-            clearEditableData();
+                    .observeOn(JavaFxScheduler.platform())
+                    .doOnSubscribe(it -> showProgress())
+                    .doFinally(this::hideProgress)
+                    .subscribe(student -> {
+                        studentsObservableList.add(student);
+                        clearEditableData();
+                    }, throwable -> {
+                        showError(throwable);
+                    });
         });
         Button updateBtn = new Button("Update");
         updateBtn.setOnAction((ActionEvent e) -> {
-            studentsObservableList.remove(selectedIndex);
-            studentsObservableList.add(selectedIndex, createStudentFromEditableData());
-            clearEditableData();
+            network.updateStudent(createStudentFromEditableData(
+                    studentsObservableList.get(selectedIndex).getId()
+            ))
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(JavaFxScheduler.platform())
+                    .doOnSubscribe(it -> showProgress())
+                    .doFinally(this::hideProgress)
+                    .subscribe(student -> {
+                        studentsObservableList.remove(selectedIndex);
+                        studentsObservableList.add(selectedIndex, student);
+                        clearEditableData();
+                    }, throwable -> {
+                        showError(throwable);
+                    });
         });
         Button deleteBtn = new Button("Delete");
         deleteBtn.setOnAction((ActionEvent e) -> {
-            studentsObservableList.remove(selectedIndex);
-            clearEditableData();
+            network.deleteStudent(studentsObservableList.get(selectedIndex))
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(JavaFxScheduler.platform())
+                    .doOnSubscribe(it -> showProgress())
+                    .doFinally(this::hideProgress)
+                    .subscribe(() -> {
+                        studentsObservableList.remove(selectedIndex);
+                        clearEditableData();
+                    }, throwable -> {
+                        showError(throwable);
+                    });
         });
-        Button clearBtn = new Button("Clear all");
-        clearBtn.setOnAction((ActionEvent e) -> {
-            studentsObservableList.clear();
-            clearEditableData();
-        });
-        hBox.getChildren().addAll(addButton, updateBtn, deleteBtn, clearBtn);
+        hBox.getChildren().addAll(addButton, updateBtn, deleteBtn);
 
     }
 

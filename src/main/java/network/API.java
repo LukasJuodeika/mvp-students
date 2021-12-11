@@ -1,16 +1,28 @@
 package network;
 
-import entities.LoginRequest;
-import entities.LoginResponse;
+import entities.CreateStudentRequest;
+import entities.Student;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Single;
-import retrofit2.http.Body;
-import retrofit2.http.Headers;
-import retrofit2.http.POST;
+import retrofit2.http.*;
+
+import java.util.List;
 
 public interface API {
 
-    @POST("token")
+    @POST("students")
     @Headers("Accept: application/json")
-    Single<LoginResponse> login(@Body LoginRequest loginRequest);
+    Single<Student> createStudent(@Body CreateStudentRequest student);
 
+    @GET("students")
+    @Headers("Accept: application/json")
+    Single<List<Student>> getStudents();
+
+    @PUT("students/{id}")
+    @Headers("Accept: application/json")
+    Single<Student> updateStudent(@Path("id") Long id, @Body Student student);
+
+    @DELETE("students/{id}")
+    @Headers("Accept: application/json")
+    Completable deleteStudent(@Path("id") Long id);
 }

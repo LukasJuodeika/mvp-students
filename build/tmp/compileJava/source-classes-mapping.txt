@@ -1,12 +1,14 @@
 entities/LoginResponse.java
  entities.LoginResponse
-entities/Student.java
- entities.Student
 entities/LoginRequest.java
  entities.LoginRequest
+entities/Student.java
+ entities.Student
+entities/CreateStudentRequest.java
+ entities.CreateStudentRequest
 network/API.java
  network.API
-network/Network.java
- network.Network
 app/Main.java
  app.Main
+network/Network.java
+ network.Network
